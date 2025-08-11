@@ -17,14 +17,18 @@ class ServiceController extends Controller
      */
     public function index(Request $request)
     {
-        $request->validate([
-            'search' => ['string'],
-            'category' => ['required', 'exists:category_services,id'],
-        ]);
-
-        $services = Service::when($request->search, function ($builder, $search) {
-            return $builder->where('service', 'LIKE', "%{$search}%");
-        })->where('category_service_id', $request->category)->paginate(20);
+        $services = Service::when(
+            $request->search,
+            fn($builder, $search) =>
+            $builder->where('service', 'LIKE', "%{$search}%")
+        )->when(
+                $request->category,
+                fn($builder, $category) =>
+                $builder->where(
+                    'category_service_id',
+                    $category
+                )
+            )->paginate(20);
 
         return new ServiceCollection($services);
     }
@@ -66,7 +70,7 @@ class ServiceController extends Controller
      */
     public function show(Service $service)
     {
-        return new ServiceCollection([$service]);
+        return new ServiceCollection([$service->load('category')]);
     }
 
     /**
@@ -99,7 +103,7 @@ class ServiceController extends Controller
             $service->image = $nameImage;
         }
 
-        $service->name = $data['service'];
+        $service->service = $data['service'];
         $service->description = $data['description'];
         $service->price = $data['price'];
         $service->category_service_id = $data['category_service_id'];

@@ -5,27 +5,40 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
     public function password(Request $request)
     {
-        $request->validate([
+        $validate = $request->validate([
+            'current_password' => ['required', 'string'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $request->user()->update([
-            'password' => Hash::make($request->string('password')),
-        ]);
+        $user = $request->user();
 
-        return response()->json(['message' => 'La contraseña ha sido actualizada.']);
+        $isCorrectPassword = Hash::check($validate['current_password'], $user->password);
+
+        if (!$isCorrectPassword) {
+            throw ValidationException::withMessages([
+                'current_password' => ["Contraseña Incorrecta"],
+            ]);
+        }
+
+        $user->password = Hash::make($validate['password']);
+        $user->save();
+
+        return response()->json([
+            'message' => 'La contraseña ha sido cambiada.'
+        ]);
     }
 
     public function profile(Request $request)
     {
         $request->validate([
             'name' => ['required'],
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', 'unique:users,email,' . $request->user()->id],
         ]);
 
         $request->user()->update([

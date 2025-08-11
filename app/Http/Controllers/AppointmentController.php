@@ -14,12 +14,7 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
-        $request->validate([
-            'date' => ['date:Y-m-d'],
-            'status' => ['exists:status_appointments,id'],
-        ]);
-
-        $appointments = Appointment::when(
+        $appointments = $request->user()->appointments()->when(
             $request->date,
             fn($builder, $date) =>
             $builder->where('date', $date)
@@ -29,6 +24,7 @@ class AppointmentController extends Controller
                 fn($builder, $status) =>
                 $builder->where('status_appointment_id', $status)
             )
+            ->with('services')
             ->paginate(20);
 
         return new AppointmentCollection($appointments);
